@@ -1,0 +1,31 @@
+#! Install the FluxCD Kustomize Controller package.
+
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageInstall
+metadata:
+  name: fluxcd-kustomize-controller
+  namespace: fluxcd-with-tanzu
+  annotations:
+    kapp.k14s.io/change-group: fluxcd-with-tanzu/fluxcd-kustomize-controller
+    kapp.k14s.io/change-rule.create-order: upsert after upserting fluxcd-with-tanzu/fluxcd-source-controller
+spec:
+  packageRef:
+    refName: kustomize-controller.fluxcd.community.tanzu.vmware.com
+    versionSelection:
+      constraints: "0.21.1"
+  serviceAccountName: fluxcd-with-tanzu-sa
+  values:
+  - secretRef:
+      name: fluxcd-kustomize-controller-values
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fluxcd-kustomize-controller-values
+  namespace: fluxcd-with-tanzu
+  annotations:
+    kapp.k14s.io/change-group: fluxcd-with-tanzu/fluxcd-kustomize-controller
+    kapp.k14s.io/change-rule.create-order: upsert after upserting fluxcd-with-tanzu/fluxcd-source-controller
+type: Opaque
+stringData:
+  values.yml:

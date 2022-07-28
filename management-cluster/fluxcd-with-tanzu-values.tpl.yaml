@@ -1,0 +1,12 @@
+#@data/values
+
+#! Overlay configuration values:
+#! create a new file fluxcd-with-tanzu-values.yaml, and set your values.
+
+---
+
+#! FluxCD GitOps repository.
+FLUXCD_CLUSTERS_REPO: https://github.com/alexandreroman/fluxcd-with-tanzu-sample
+FLUXCD_CLUSTERS_BRANCH: main
+FLUXCD_CLUSTERS_REPO_USERNAME: github
+FLUXCD_CLUSTERS_REPO_PASSWORD: INSERT-GIT-PASSWORD-HERE

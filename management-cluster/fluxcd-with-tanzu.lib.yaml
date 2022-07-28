@@ -1,0 +1,93 @@
+#@ load("@ytt:data", "data")
+
+#! Cluster resources are defined in this file.
+
+#@ def fluxcd_with_tanzu_data():
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fluxcd-with-tanzu
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluxcd-with-tanzu-sa
+  namespace: fluxcd-with-tanzu
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fluxcd-with-tanzu-role
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fluxcd-with-tanzu-role-binding
+subjects:
+- kind: ServiceAccount
+  name: fluxcd-with-tanzu-sa
+  namespace: fluxcd-with-tanzu
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fluxcd-with-tanzu-role
+---
+apiVersion: kappctrl.k14s.io/v1alpha1
+kind: App
+metadata:
+  name: bootstrap
+  namespace: fluxcd-with-tanzu
+spec:
+  serviceAccountName: fluxcd-with-tanzu-sa
+  fetch:
+  - git:
+      url: https://github.com/alexandreroman/fluxcd-with-tanzu
+      ref: origin/main
+      secretRef:
+        name: fluxcd-with-tanzu-repo-secret
+  template:
+  - ytt:
+      paths:
+      - bootstrap
+      inline:
+        pathsFrom:
+        - secretRef:
+            name: bootstrap-values
+  - kbld:
+      paths:
+      - "-"
+  deploy:
+  - kapp: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bootstrap-values
+  namespace: fluxcd-with-tanzu
+type: Opaque
+stringData:
+  #@yaml/text-templated-strings
+  values.yaml: |
+    #@data/values
+    ---
+    FLUXCD_CLUSTERS_REPO: (@= data.values.FLUXCD_CLUSTERS_REPO @)
+    FLUXCD_CLUSTERS_BRANCH: (@= data.values.FLUXCD_CLUSTERS_BRANCH @)
+    FLUXCD_CLUSTERS_REPO_USERNAME: (@= data.values.FLUXCD_CLUSTERS_REPO_USERNAME @)
+    FLUXCD_CLUSTERS_REPO_PASSWORD: (@= data.values.FLUXCD_CLUSTERS_REPO_PASSWORD @)
+    CLUSTER_NAME: (@= data.values.CLUSTER_NAME @)
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fluxcd-with-tanzu-repo-secret
+  namespace: fluxcd-with-tanzu
+type: Opaque
+stringData:
+  username: #@ data.values.FLUXCD_CLUSTERS_REPO_USERNAME
+  password: #@ data.values.FLUXCD_CLUSTERS_REPO_PASSWORD
+#@ end

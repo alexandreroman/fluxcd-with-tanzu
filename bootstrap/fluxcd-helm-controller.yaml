@@ -1,0 +1,31 @@
+#! Install the FluxCD Helm Controller package.
+
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageInstall
+metadata:
+  name: fluxcd-helm-controller
+  namespace: fluxcd-with-tanzu
+  annotations:
+    kapp.k14s.io/change-group: fluxcd-with-tanzu/fluxcd-helm-controller
+    kapp.k14s.io/change-rule.create-order: upsert after upserting fluxcd-with-tanzu/fluxcd-source-controller
+spec:
+  packageRef:
+    refName: helm-controller.fluxcd.community.tanzu.vmware.com
+    versionSelection:
+      constraints: "0.17.2"
+  serviceAccountName: fluxcd-with-tanzu-sa
+  values:
+  - secretRef:
+      name: fluxcd-helm-controller-values
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fluxcd-helm-controller-values
+  namespace: fluxcd-with-tanzu
+  annotations:
+    kapp.k14s.io/change-group: fluxcd-with-tanzu/fluxcd-helm-controller
+    kapp.k14s.io/change-rule.create-order: upsert after upserting fluxcd-with-tanzu/fluxcd-source-controller
+type: Opaque
+stringData:
+  values.yml:

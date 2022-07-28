@@ -1,0 +1,3 @@
+.DS_Store
+.vscode
+management-cluster/fluxcd-with-tanzu-values.yaml

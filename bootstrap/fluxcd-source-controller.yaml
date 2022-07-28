@@ -1,0 +1,31 @@
+#! Install the FluxCD Source Controller package.
+
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageInstall
+metadata:
+  name: fluxcd-source-controller
+  namespace: fluxcd-with-tanzu
+  annotations:
+    kapp.k14s.io/change-group: fluxcd-with-tanzu/fluxcd-source-controller
+    kapp.k14s.io/change-rule.create-order: upsert after upserting fluxcd-with-tanzu/tce-repo
+spec:
+  packageRef:
+    refName: fluxcd-source-controller.community.tanzu.vmware.com
+    versionSelection:
+      constraints: "0.21.5"
+  serviceAccountName: fluxcd-with-tanzu-sa
+  values:
+  - secretRef:
+      name: fluxcd-source-controller-values
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fluxcd-source-controller-values
+  namespace: fluxcd-with-tanzu
+  annotations:
+    kapp.k14s.io/change-group: fluxcd-with-tanzu/fluxcd-source-controller
+    kapp.k14s.io/change-rule.create-order: upsert after upserting fluxcd-with-tanzu/tce-repo
+type: Opaque
+stringData:
+  values.yml:

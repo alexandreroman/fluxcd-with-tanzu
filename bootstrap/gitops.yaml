@@ -1,0 +1,123 @@
+#@ load("@ytt:data", "data")
+
+#! Fetch files from the GitOps repository, and those resources to the cluster.
+#!
+#! Implementation note: we rely on Carvel to deploy FluxCD and its dependencies,
+#! since this component is already available in every Tanzu cluster. This way
+#! you can update the FluxCD installation at a later time, since those resources
+#! are also following a GitOps approach.
+#! For example: you may want to upgrade FluxCD by editing the package version in
+#! file fluxcd-kustomize-controller.yaml.
+
+apiVersion: kappctrl.k14s.io/v1alpha1
+kind: App
+metadata:
+  name: gitops
+  namespace: fluxcd-with-tanzu
+  annotations:
+    kapp.k14s.io/change-rule.create-order: upsert after upserting fluxcd-with-tanzu/fluxcd-kustomize-controller
+spec:
+  serviceAccountName: fluxcd-with-tanzu-sa
+  fetch:
+  - git:
+      url: #@ data.values.FLUXCD_CLUSTERS_REPO
+      ref: #@ data.values.FLUXCD_CLUSTERS_BRANCH
+      secretRef:
+        name: fluxcd-with-tanzu-repo-secret
+  template:
+  - ytt:
+      paths:
+      - #@ "clusters/{}.yaml".format(data.values.CLUSTER_NAME)
+      inline:
+        pathsFrom:
+        - secretRef:
+            name: gitops-values
+  deploy:
+  - kapp: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitops-values
+  namespace: fluxcd-with-tanzu
+  annotations:
+    kapp.k14s.io/change-rule.create-order: upsert after upserting fluxcd-with-tanzu/fluxcd-kustomize-controller
+type: Opaque
+stringData:
+  #@yaml/text-templated-strings
+  values.yaml: |
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: gitops
+      annotations:
+        kapp.k14s.io/change-group: fluxcd-with-tanzu/gitops
+    ---
+    apiVersion: source.toolkit.fluxcd.io/v1beta1
+    kind: GitRepository
+    metadata:
+      name: clusters
+      namespace: gitops
+      annotations:
+        kapp.k14s.io/change-group: fluxcd-with-tanzu/gitops
+    spec:
+      interval: 1m
+      url: (@= data.values.FLUXCD_CLUSTERS_REPO @)
+      ref:
+        branch: (@= data.values.FLUXCD_CLUSTERS_BRANCH @)
+      secretRef:
+        name: git-secret
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: gitops-sa
+      namespace: gitops
+      annotations:
+        kapp.k14s.io/change-group: fluxcd-with-tanzu/gitops
+    ---
+    kind: ClusterRole
+    apiVersion: rbac.authorization.k8s.io/v1
+    metadata:
+      name: gitops-role
+      annotations:
+        kapp.k14s.io/change-group: fluxcd-with-tanzu/gitops
+    rules:
+    - apiGroups: ["*"]
+      resources: ["*"]
+      verbs: ["*"]
+    ---
+    kind: ClusterRoleBinding
+    apiVersion: rbac.authorization.k8s.io/v1
+    metadata:
+      name: gitops-role-binding
+      annotations:
+        kapp.k14s.io/change-group: fluxcd-with-tanzu/gitops
+    subjects:
+    - kind: ServiceAccount
+      name: gitops-sa
+      namespace: gitops
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: gitops-role
+    ---
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: git-secret
+      namespace: gitops
+    type: Opaque
+    stringData:
+      username: (@= data.values.FLUXCD_CLUSTERS_REPO_USERNAME @)
+      password: (@= data.values.FLUXCD_CLUSTERS_REPO_PASSWORD @)
+    ---
+    #! Using this SecretExport definition you can import the Git secret
+    #! to any namespaces, using a SecretImport definition.
+    apiVersion: secretgen.carvel.dev/v1alpha1
+    kind: SecretExport
+    metadata:
+      name: git-secret
+      namespace: gitops
+    spec:
+      toNamespace: "*"

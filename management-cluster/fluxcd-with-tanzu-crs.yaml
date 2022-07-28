@@ -1,0 +1,36 @@
+#@ load("@ytt:overlay", "overlay")
+#@ load("@ytt:data", "data")
+#@ load("@ytt:yaml", "yaml")
+
+#@ load("fluxcd-with-tanzu.lib.yaml", "fluxcd_with_tanzu_data")
+
+#! This ClusterResourceSet is used by Cluster API when a cluster is created.
+#! The ClusterResourceSet resources (a set of K8s object definitions) will be
+#! applied to the cluster.
+
+apiVersion: addons.cluster.x-k8s.io/v1alpha3
+kind: ClusterResourceSet
+metadata:
+  name: #@ "{}-fluxcd-with-tanzu".format(data.values.CLUSTER_NAME)
+  labels:
+    cluster.x-k8s.io/cluster-name: #@ data.values.CLUSTER_NAME
+  annotations:
+    tkg.tanzu.vmware.com/addon-type: "addons-management/fluxcd-with-tanzu"
+spec:
+  strategy: "ApplyOnce"
+  clusterSelector:
+    matchLabels:
+      tkg.tanzu.vmware.com/cluster-name: #@ data.values.CLUSTER_NAME
+  resources:
+    - name: #@ "{}-fluxcd-with-tanzu-crs".format(data.values.CLUSTER_NAME)
+      kind: Secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: #@ "{}-fluxcd-with-tanzu-crs".format(data.values.CLUSTER_NAME)
+  annotations:
+    tkg.tanzu.vmware.com/addon-type: "addons-management/fluxcd-with-tanzu"
+type: addons.cluster.x-k8s.io/resource-set
+stringData:
+  value: #@ yaml.encode(overlay.apply(fluxcd_with_tanzu_data()))

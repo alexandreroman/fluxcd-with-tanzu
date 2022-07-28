@@ -1,0 +1,14 @@
+#! Add the Tanzu Community Edition package repository,
+#! packages such as FluxCD Source Controller are downloaded from this repository.
+
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageRepository
+metadata:
+  name: tce-repo
+  namespace: fluxcd-with-tanzu
+  annotations:
+    kapp.k14s.io/change-group: fluxcd-with-tanzu/tce-repo
+spec:
+  fetch:
+    imgpkgBundle:
+      image: projects.registry.vmware.com/tce/main:0.12.0
